@@ -1,62 +1,38 @@
-from flask import Flask, render_template, request
+from flask import Flask, request, jsonify
 import math
 
 app = Flask(__name__)
 
-@app.route('/', methods=['GET', 'POST'])
-def calculator():
-    result = ""
-    error = ""
+# Safe math functions
+def safe_eval(expr):
+    expr = expr.replace("^", "**")
 
-    if request.method == 'POST':
-        choice = request.form.get('choice')
-        num1 = request.form.get('num1', '')
-        num2 = request.form.get('num2', '')
+    allowed = {
+        "sin": lambda x: math.sin(math.radians(x)),
+        "cos": lambda x: math.cos(math.radians(x)),
+        "tan": lambda x: math.tan(math.radians(x)),
+        "sqrt": math.sqrt,
+        "log": math.log10,
+        "ln": math.log,
+        "pi": math.pi,
+        "e": math.e,
+        "pow": pow
+    }
 
-        try:
-            if choice == '1':  # Addition
-                result = float(num1) + float(num2)
+    try:
+        result = eval(expr, {"__builtins__": None}, allowed)
+        return result
+    except:
+        return "Error"
 
-            elif choice == '2':  # Subtraction
-                result = float(num1) - float(num2)
+@app.route("/calculate", methods=["POST"])
+def calculate():
+    data = request.json
+    expression = data.get("expression", "")
 
-            elif choice == '3':  # Multiplication
-                result = float(num1) * float(num2)
+    result = safe_eval(expression)
+    return jsonify({"result": result})
 
-            elif choice == '4':  # Division
-                if float(num2) == 0:
-                    error = "Cannot divide by zero"
-                else:
-                    result = float(num1) / float(num2)
 
-            elif choice == '5':  # Power
-                result = float(num1) ** float(num2)
-
-            elif choice == '6':  # Square Root
-                if float(num1) < 0:
-                    error = "Square root not possible for negative numbers"
-                else:
-                    result = math.sqrt(float(num1))
-
-            elif choice == '7':  # Factorial
-                n = int(float(num1))
-                if n < 0:
-                    error = "Factorial not possible"
-                else:
-                    result = math.factorial(n)
-
-            elif choice == '8':  # Modulus
-                result = float(num1) % float(num2)
-
-            else:
-                error = "Invalid Choice"
-
-        except ValueError:
-            error = "Please enter valid numbers"
-        except Exception as e:
-            error = f"Error: {str(e)}"
-
-    return render_template('index.html', result=result, error=error)
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     app.run(debug=True)
